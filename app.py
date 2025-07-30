@@ -422,7 +422,7 @@ def display_local_explanations(model, user_input_df, X_train):
             x_pos = row['SHAP_Value'] / 2
             ax.text(x_pos, i, shap_text, 
                    va='center', ha='center',
-                   fontsize=9, fontweight='bold', color='white')
+                   fontsize=9, fontweight='bold', color='black')
         
         plt.tight_layout()
         st.pyplot(fig)
@@ -490,7 +490,7 @@ def display_local_explanations(model, user_input_df, X_train):
             x_pos = row['SHAP_Contribution'] / 2
             ax.text(x_pos, i, shap_text, 
                    va='center', ha='center',
-                   fontsize=9, fontweight='bold', color='white')
+                   fontsize=9, fontweight='bold', color='black')
         
         plt.tight_layout()
         st.pyplot(fig)
