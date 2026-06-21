@@ -167,6 +167,7 @@ def preprocess_data(data, feature_names):
         'Dementia': 'dementia',
         'Chronic_pulmonary_disease': 'chronic_pulmonary_disease',
         'Liver Disease': 'mild_liver_disease',
+        'Liver_disease': 'mild_liver_disease',
         'Diabetes': 'diabetes_without_cc',
         'Cancer': 'malignant_cancer',
         'Vasoactive_drugs': 'vasoactive_drugs',
@@ -209,6 +210,32 @@ def preprocess_data(data, feature_names):
     
     # Ensure feature alignment
     X = data.reindex(columns=feature_names, fill_value=0)
+
+    # Final safety conversion: all model inputs must be numeric.
+    # This prevents strings such as 'Yes'/'No', 'Male'/'Female', or 'IHD'/'CRRT'
+    # from reaching sklearn prediction/SHAP after Streamlit reruns.
+    value_map = {
+        'Yes': 1, 'No': 0,
+        'Male': 1, 'Female': 0, 'M': 1, 'F': 0,
+        'IHD': 1, 'CRRT': 0
+    }
+    X = X.replace(value_map)
+    X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
+    X = X.astype(float)
+    return X
+
+def ensure_numeric_model_input(data, feature_names):
+    """Force model input into the exact numeric feature matrix expected by the model."""
+    X = data.copy()
+    value_map = {
+        'Yes': 1, 'No': 0,
+        'Male': 1, 'Female': 0, 'M': 1, 'F': 0,
+        'IHD': 1, 'CRRT': 0
+    }
+    X = X.replace(value_map)
+    X = X.reindex(columns=feature_names, fill_value=0)
+    X = X.apply(pd.to_numeric, errors='coerce').fillna(0)
+    X = X.astype(float)
     return X
 
 # --- Time Difference Calculation Function ---
@@ -358,6 +385,7 @@ def display_global_explanations(model, X_train, shap_image):
 
 def display_local_explanations(model, user_input_df, X_train):
     """Display local model explanations (SHAP force plot and LIME plot)"""
+    user_input_df = ensure_numeric_model_input(user_input_df, X_train.columns.tolist())
     st.subheader("Local Explanations")
     
     # --- SHAP Force Plot ---
@@ -572,6 +600,9 @@ def main():
     # Sidebar input
     with st.spinner("Loading input form..."):
         user_input_df = sidebar_input_features(feature_names)
+
+    # Safety check: sklearn and SHAP require a fully numeric matrix.
+    user_input_df = ensure_numeric_model_input(user_input_df, feature_names)
     
     # 预测结果部分
     st.markdown("""
