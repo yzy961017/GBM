@@ -1,9 +1,15 @@
+# Fixed dependency versions for the ICU RRT Hypotension Risk Prediction Streamlit app.
+# Recommended Streamlit Community Cloud Python version: 3.11.
+# Set Python version in Streamlit Cloud UI Advanced settings; runtime.txt is not used for this app.
+
+streamlit==1.58.0
 scikit-learn==1.7.0
-lime
-matplotlib
-numpy
-pandas
-Pillow
-plotly
-shap
-streamlit
+numpy==2.3.5
+pandas==2.2.3
+scipy==1.17.0
+joblib==1.5.3
+matplotlib==3.10.8
+Pillow==12.2.0
+plotly==6.5.2
+shap==0.50.0
+lime==0.2.0.1
