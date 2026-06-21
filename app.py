@@ -14,6 +14,16 @@ import streamlit.components.v1 as components
 import io
 import pickle
 import warnings
+import sys
+
+# Compatibility shim for scikit-learn GBM pickle files that reference
+# the Cython loss module as a top-level module named `_loss`.
+# This prevents: ModuleNotFoundError: No module named '_loss' during pickle.load().
+try:
+    import sklearn._loss._loss as _sklearn_loss_module
+    sys.modules.setdefault("_loss", _sklearn_loss_module)
+except Exception:
+    pass
 # 禁用所有matplotlib字体相关警告
 warnings.filterwarnings("ignore", category=UserWarning, module='matplotlib')
 warnings.filterwarnings("ignore", message="findfont:*")
