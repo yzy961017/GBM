@@ -238,6 +238,40 @@ def ensure_numeric_model_input(data, feature_names):
     X = X.astype(float)
     return X
 
+
+def get_shap_values_2d(shap_values):
+    """Normalize SHAP output to a 2D matrix: n_samples x n_features."""
+    if isinstance(shap_values, list):
+        values = shap_values[1] if len(shap_values) > 1 else shap_values[0]
+    else:
+        values = shap_values
+
+    values = np.asarray(values)
+
+    # Newer SHAP versions may return n_samples x n_features x n_outputs.
+    # For binary classification, use the positive class when available.
+    if values.ndim == 3:
+        values = values[:, :, 1] if values.shape[2] > 1 else values[:, :, 0]
+    elif values.ndim == 1:
+        values = values.reshape(1, -1)
+
+    return values
+
+
+def to_scalar(value, index=0):
+    """Safely convert numpy scalar/array/list outputs to a Python float."""
+    if isinstance(value, list):
+        value = value[index] if len(value) > index else value[0]
+
+    arr = np.asarray(value)
+    if arr.ndim == 0:
+        return float(arr)
+
+    flat = arr.ravel()
+    if flat.size == 0:
+        return 0.0
+    return float(flat[index] if flat.size > index else flat[0])
+
 # --- Time Difference Calculation Function ---
 def calculate_hours_diff(start_date, start_time, end_date, end_time):
     """Calculate hour difference between two datetime points"""
@@ -321,7 +355,7 @@ def display_global_explanations(model, X_train, shap_image):
     # --- Calculate SHAP values ---
     with st.spinner("Calculating SHAP values, please wait..."):
         explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(X_train)
+        shap_values = get_shap_values_2d(explainer.shap_values(X_train))
     
     # Convert SHAP values and original data to DataFrame
     shap_value_df = pd.DataFrame(shap_values, columns=X_train.columns)
@@ -392,23 +426,15 @@ def display_local_explanations(model, user_input_df, X_train):
     st.write('**SHAP Force Plot**')
     try:
         explainer = shap.TreeExplainer(model)
-        shap_values = explainer.shap_values(user_input_df)
-        
-        # Handle different SHAP output formats for GBM
-        if isinstance(shap_values, list):
-            # For binary classification, use class 1 (positive class)
-            shap_values_to_plot = shap_values[1][0, :]
-            expected_value = explainer.expected_value[1]
-        else:
-            # For single output
-            shap_values_to_plot = shap_values[0, :]
-            expected_value = explainer.expected_value
+        shap_values = get_shap_values_2d(explainer.shap_values(user_input_df))
+        shap_values_to_plot = np.asarray(shap_values[0, :], dtype=float)
+        expected_value = explainer.expected_value
         
         # Display precise probability values
         prediction_proba = model.predict_proba(user_input_df)[0][1]
         # Convert numpy types to Python float to avoid format string errors
-        prediction_proba_float = float(prediction_proba)
-        expected_value_float = float(expected_value)
+        prediction_proba_float = to_scalar(prediction_proba)
+        expected_value_float = to_scalar(expected_value)
         
         st.write(f"**Current input prediction probability:** `{prediction_proba_float:.4f}`")
         st.write(f"**Model baseline probability (expected value):** `{expected_value_float:.4f}`")
@@ -478,6 +504,11 @@ def display_local_explanations(model, user_input_df, X_train):
     # --- Alternative Local Explanation ---
     st.write('**Feature Contribution Analysis**')
     try:
+        if 'shap_values_to_plot' not in locals():
+            explainer = shap.TreeExplainer(model)
+            shap_values = get_shap_values_2d(explainer.shap_values(user_input_df))
+            shap_values_to_plot = np.asarray(shap_values[0, :], dtype=float)
+
         # Create a simplified feature contribution analysis
         # This provides similar insights to LIME but with better numerical stability
         
